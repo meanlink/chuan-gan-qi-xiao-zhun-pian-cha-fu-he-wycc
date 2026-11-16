@@ -12,6 +12,7 @@ import {reportPage,bindReports} from './pages/reports.js';
 import {esc} from './utils/dom.js';
 async function render(){
  const app=document.querySelector('#app');
+ clearTimeout(window.__resultPoll);
  try{
    if(!workspace.meta){workspace.meta=await api('/meta');document.title=workspace.meta.name;document.documentElement.style.setProperty('--accent',workspace.meta.accent||'oklch(48% 0.13 145)');document.body.dataset.style=workspace.meta.style||'ledger';}
    const {page,id}=route();

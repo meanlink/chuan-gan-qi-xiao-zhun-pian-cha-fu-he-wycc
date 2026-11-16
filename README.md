@@ -6,6 +6,15 @@ Bootstrap 区间估计的真实业务分析小型项目。完整模拟客户、�
 数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
 三个贯穿全栈的实体：Dataset 数据批次、Job 分析任务、Report 分发计划；辅助 User、Audit、Delivery。
 
+## 分段续算、暂停与追加采样
+Bootstrap 按段推进并逐段保存每个温区已完成的逐次重采样：每条重采样的随机流由 seed=1007、温区序和次数序号派生，因此分段大小、暂停位置与接管次数都不改变同批、同参数、同总次数的最终区间与业务解释。旧版本已保存的结果作为历史快照保留，可继续查看、批准与分发。
+
+- 工作台可设分段大小（默认 500 次/段）；结果页显示已完成/目标次数与各温区进度。
+- 排队中或计算中可暂停，暂停点即已保存的段边界；继续时只算未完成部分，重试不会重算已完成采样。
+- 已完成/已暂停/失败的分析可追加采样次数（总数 500–5000），只补算差异部分。输入与口径由指纹校验，数据或参数变化会被拒绝而不是拼接旧样本。
+- 已批准结果追加时保留原版并另建待审版本；原版仍可按原样分发，新版本须重新批准。各温区进度齐备才发布结论，未完成结果不可批准或分发。
+- worker 以 attempt 围栏和心跳领取任务：多进程或旧执行晚到时，进度写入会被拒绝，不会回退或污染已存进度。
+
 ## 快速启动
 ```bash
 cp .env.example .env
@@ -29,7 +38,7 @@ Python 3.12 / FastAPI / SQLAlchemy / NumPy / SciPy / scikit-learn；PostgreSQL 1
 ## 目录与工程约定
 backend/src/{models,schemas,services,routes,controllers,middlewares,constants,config,utils}；backend/scripts/seed_demo.py；backend/migrations/initial.py。
 frontend/src/{api,stores,types,components/common,hooks,pages,router,utils,constants}。
-Role 枚举：admin/analyst/viewer；JobStatus：queued/running/completed/failed。后端 backend/src/constants/enums.py，前端 frontend/src/constants/enums.js；路由权限在 middlewares/auth.py；页面按相同角色控制操作入口。
+Role 枚举：admin/analyst/viewer；JobStatus：queued/running/paused/completed/failed。后端 backend/src/constants/enums.py，前端 frontend/src/constants/enums.js；路由权限在 middlewares/auth.py；页面按相同角色控制操作入口。
 
 ## 环境变量与 Docker
 COMPOSE_PROJECT_NAME=sensor-bootstrap；FRONTEND_PORT=18206；BACKEND_PORT=19206；DB_PORT=17706；DB_PASSWORD、JWT_SECRET 见 .env.example；SEED_DEMO 默认 true。共享命名产物卷供后端下载与 worker 写入，数据库/Redis 各持久卷。
